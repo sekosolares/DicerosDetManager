@@ -1,7 +1,7 @@
 class Detalle {
   tableID;
   tableParent;
-  cells_quantity;
+  cellsQuantity;
   config;
   sintaxisPorValor = {
     TEXT: "':VALUE'",
@@ -54,7 +54,7 @@ class Detalle {
 
   constructor(detTableId, config) {
     this.tableID = detTableId;
-    this.cells_quantity =
+    this.cellsQuantity =
       document.getElementById(detTableId).rows[0].cells.length;
     this.config = config;
     this.config.detTableTitle = config.detTableTitle
