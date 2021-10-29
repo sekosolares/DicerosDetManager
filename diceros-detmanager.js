@@ -7,7 +7,7 @@ class Detalle {
 			border-radius:4px;
 			padding:4px;
 			margin-right: 4px;
-			font-size: 0.7em;
+			font-size: 1em;
 		}
 		.table-det-block {
 			margin-bottom: 1em;
@@ -64,6 +64,29 @@ class Detalle {
 
 		this.putTitle(tableParent, configuration.title.label, {displayShortcuts: configuration.title.displayShortcuts});
 		this.putInsertButton(configuration.insertAction.location, configuration.insertAction.label, configuration.insertAction.id);
+	}
+
+	static createElement(specs) {
+		let element = undefined;
+
+		element = document.createElement(specs.elementTag);
+		element.type = specs.fieldType;
+		if(specs.isIndicator)
+			element.dataset.indicator = specs.isIndicator;
+		
+		if(specs.colname)
+			element.dataset.dbcolumn = specs.colname;
+		
+		if(specs.cssClasses)
+			specs.cssClasses.forEach( cssClass => element.classList.add(cssClass) );
+
+		if(specs.elementStyle)
+			specs.elementStyle.forEach( elem => element.style[elem.prop] = elem.value );
+		
+		if(specs.elementAttributes)
+			specs.elementAttributes.forEach( attrib => element.setAttribute(attrib.attr, attrib.value) );
+
+		return element;
 	}
 
 	static putInsertButton(locationElement="default", buttonLabel="Agregar Item", {buttonId="pbAddItem"}) {
