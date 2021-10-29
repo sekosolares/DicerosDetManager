@@ -1,212 +1,97 @@
 class Detalle {
-  tableID;
-  tableParent;
-  cellsQuantity;
-  config;
-  sintaxisPorValor = {
-    TEXT: "':VALUE'",
-    NUMBER: ":VALUE",
-    DATE: "to_date(':VALUE', 'yyyy-mm-dd')",
-  };
-  css = `<style>
-        .shortcut-label {
-                color:#555;
-                border:1px solid #555;
-                border-radius:4px;
-                padding:4px;
-        }
-        .table-det-block {
-                margin-bottom: 1em;
-                margin-top: 1em;
-        }
-        .table-det-title {
-                letter-spacing: 2px;
-                text-align: center;
-                font-family: 'Segoe UI', Arial, sans-serif;
-                font-weight: 600;
-                font-size: 2em;
-                padding-left: 30px;
-                padding-right: 30px;
-                display: inline;
-        }
-        .boton {
-        background-color: #306FAB;
-        border-radius: 5px;
-        border: 1px solid #306FAB;
-        color: #FFFFFF;
-        padding: 4px 8px;
-        }
-        .boton:hover {
-        background-color: #0C5AA6;
-        border: 1px solid #0C5AA6;
-        cursor: pointer;
-        color: #FFFFFF;
-        padding: 4px 8px;
-        }
-        input.boton:focus {
-        border: 1px solid #07C;
-        border-radius: 2px;
-        box-shadow: 3px 3px 3px #9A9A9A;
-        padding: 4px 8px;
-        }
-</style>`;
-  tableDetTitleBlock;
+	static detStyle = `
+	<style>
+		.shortcut-label {
+			color:#555;
+			border:1px solid #555;
+			border-radius:4px;
+			padding:4px;
+			margin-right: 4px;
+			font-size: 0.7em;
+		}
+		.table-det-block {
+			margin-bottom: 1em;
+			margin-top: 1em;
+			font-family: 'Segoe UI', Arial, sans-serif;
+		}
+		.table-det-title {
+			letter-spacing: 2px;
+			text-align: center;
+			font-weight: 600;
+			font-size: 1.5em;
+			padding-left: 30px;
+			padding-right: 30px;
+			display: inline;
+		}
+		.boton {
+			background-color: #306FAB;
+			border-radius: 5px;
+			border: 1px solid #306FAB;
+			color: #FFFFFF;
+			padding: 4px 8px;
+		}
+		.boton:hover {
+			background-color: #0C5AA6;
+			border: 1px solid #0C5AA6;
+			cursor: pointer;
+			color: #FFFFFF;
+			padding: 4px 8px;
+		}
+		input.boton:focus {
+			border: 1px solid #07C;
+			border-radius: 2px;
+			box-shadow: 3px 3px 3px #9A9A9A;
+			padding: 4px 8px;
+		}
+	</style>
+	`;
+	static sintaxisPorTipo = {
+		TEXT: "':VALUE'",
+		NUMBER: ":VALUE",
+		DATE: "to_date(':VALUE', 'yyyy-mm-dd')",
+	};
 
-  constructor(detTableId, config) {
-    this.tableID = detTableId;
-    this.cellsQuantity =
-      document.getElementById(detTableId).rows[0].cells.length;
-    this.config = config;
-    this.config.detTableTitle = config.detTableTitle
-      ? config.detTableTitle
-      : "ITEMS";
-    this.config.pbAddId = config.pbAddId ? config.pbAddId : "pbAddNewItem";
+	constructor(tableId) {
+		this.tableId = tableId;		
+	}
 
-    this.tableDetTitleBlock = `
-	<div class="table-det-block" id="AddItem_TitleBlock">
-		<input type="button" value="Agregar Item" id="${this.config.pbAddId}" class="boton">
-		<div class="table-det-title"> ${this.config.detTableTitle} </div>
-		<b class="shortcut-label"> F3 </b><span>&nbsp; Agregar Item &nbsp; |</span>
-		<b class="shortcut-label"> F4 </b><span>&nbsp; Grabar detalle &nbsp; |</span>
-		<b class="shortcut-label"> F6 </b><span>&nbsp; Actualizar detalle &nbsp; |</span>
-		<b class="shortcut-label"> F10 </b><span>&nbsp; Eliminar detalle</span>
-	</div>`;
-    this.tableParent = document.getElementById(detTableId).parentElement;
-  }
+	static toDetTable(tableId=undefined, configuration) {
+		if(Object.keys(configuration).length == 0) return console.error("Parametro %cconfiguration vacio. Imposible convertir a tabla detalle.", "font-style:italic;color:#07C;");
 
-  render() {
-    this.tableParent.innerHTML =
-      this.css + this.tableDetTitleBlock + this.tableParent.innerHTML;
-  }
+		let
+		tableElement = document.getElementById(tableId),
+		tableParent = tableElement.parentElement;
 
-  hideTable(hideParent) {
-    if (hideParent) return (this.tableParent.style.display = "none");
-    document.getElementById(this.tableID).style.display = "none";
-  }
+		this.putTitle(tableParent, configuration.title.label, {displayShortcuts: configuration.title.displayShortcuts});
+		this.putInsertButton(configuration.insertAction.location, configuration.insertAction.label, configuration.insertAction.id);
+	}
 
-  showTable(showParent) {
-    if (showParent) return (this.tableParent.style.display = "");
-    document.getElementById(this.tableID).style.display = "";
-  }
+	static putInsertButton(locationElement="default", buttonLabel="Agregar Item", {buttonId="pbAddItem"}) {
+		if(locationElement == "default") locationElement = document.getElementById("Detail_Actions");
 
-  bindButtons(buttonsBinding = { addNewItem: "pbAddNewItem" }) {
-    if (document.getElementById(buttonsBinding.addNewItem)) {
-      let id = this.tableID,
-        configuration = this.config,
-        syntaxValue = this.sintaxisPorValor;
-      document
-        .getElementById(buttonsBinding.addNewItem)
-        .addEventListener("click", function () {
-          let items = document.getElementById(id),
-            linea = items.querySelectorAll("tr").length - 1,
-            newRow = undefined,
-            newCell = undefined,
-            element = undefined;
-          const CELLS_QUANT = configuration.newItemCells.length;
+		let buttonComponent = `<input type="button" value="${buttonLabel}" id="${buttonId}" class="boton">`;
 
-          newRow = document.createElement("tr");
-          newRow.classList.add("clTableOn");
+		locationElement.innerHTML = buttonComponent + locationElement.innerHTML;
+		
+	}
 
-          for (let j = 0; j < CELLS_QUANT; ++j) {
-            newCell = document.createElement("td");
-            newCell.classList.add("clTableOn");
+	static putTitle(locationElement=undefined, titleLabel="ITEMS", {displayShortcuts=false}) {
+		if(!locationElement) return console.error("Parametro %clocationElement no definido!", "font-style:italic;color:#07C;");
 
-            if (configuration.newItemCells[j])
-              element = configuration.newItemCells[j]();
+		let titleComponent = `${this.detStyle}
+			<div class="table-det-block" id="Detail_Title">
+				<div style="display:inline-block" id="Detail_Actions"></div>
+				<div class="table-det-title"> ${titleLabel} </div>
+				<div ${displayShortcuts ? "style='display:inline-block'" : "style='display:none'"}>
+					<b class="shortcut-label"> F3 </b><span> Agregar &nbsp; </span>
+					<b class="shortcut-label"> F4 </b><span> Grabar  &nbsp; </span>
+					<b class="shortcut-label"> F6 </b><span> Actualizar &nbsp; </span>
+					<b class="shortcut-label"> F10 </b><span> Eliminar </span>
+				</div>
+			</div>`;
 
-            if (element.dataset.indicator) element.value = linea;
+		locationElement.innerHTML = titleComponent + locationElement.innerHTML;
+	}
 
-            if (element) {
-              newCell.appendChild(element);
-              newRow.appendChild(newCell);
-            }
-          }
 
-          newCell = document.createElement("td");
-          newCell.classList.add("clTableOn");
-
-          let save = document.createElement("input");
-          save.type = "button";
-          save.id = "saveReg";
-          save.classList.add("boton");
-          save.value = "(F4) Grabar";
-          save.style.backgroundColor = "#218c4c";
-          save.style.border = "1px solid #218c4c";
-          save.addEventListener("click", function () {
-            let columnas = configuration.dbColumns,
-              valores = [],
-              confirmado = true,
-              params = [];
-
-            for (let colname of columnas) {
-              console.info(`[saveReg]: colname: ${colname}`);
-              let field = document.querySelector(
-                  "[data-dbcolumn='" + colname + "'"
-                ),
-                fieldType = field.getAttribute("type")
-                  ? field.getAttribute("type").toUpperCase()
-                  : "HIDDEN",
-                valor = "";
-
-              console.info(
-                `[saveReg]: field = ${field.parentElement} | fieldType = ${fieldType}`
-              );
-
-              if (!fieldType || fieldType == "HIDDEN")
-                fieldType = field.dataset.type.toUpperCase();
-
-              console.info(
-                `[saveReg]: fieldType [after validation] = ${fieldType} | syntaxValue: ${syntaxValue}`
-              );
-
-              valor = syntaxValue[fieldType].replace(/:VALUE/g, field.value);
-              valores.push(valor);
-            }
-
-            params = [
-              "tp=P",
-              "m=I",
-              "l=" + valores.join("|"),
-              "c=" + columnas.join("|"),
-              "t=" + configuration.dbTable,
-            ];
-            params = params.join("&");
-
-            let url = document.location.href;
-            url = url.substring(0, url.lastIndexOf("Sistema/") + 7);
-            url += "/getdata?" + params;
-
-            console.log(
-              `[onSaveReg]: callback=${configuration.onSaveCallback}`
-            );
-
-            if (confirmado) {
-              fetch(encodeURI(url)).then((response) => {
-                if (response.ok) {
-                  response.text().then((response) => {
-                    if (response != 1) {
-                      alert("Algo salio mal al grabar el detalle!");
-                      console.error(
-                        "Ocurrio un error al guardar detalle. Info: " + response
-                      );
-                    } else {
-                      if (configuration.onSaveCallback)
-                        configuration.onSaveCallback();
-                      if (document.querySelector("a[title*='Refrescar']"))
-                        document.querySelector("a[title*='Refrescar']").click();
-                      else document.location.reload();
-                    }
-                  });
-                }
-              });
-            }
-          });
-
-          newCell.appendChild(save);
-          newRow.appendChild(newCell);
-
-          items.querySelectorAll("tbody")[0].appendChild(newRow);
-        });
-    }
-  }
 }
