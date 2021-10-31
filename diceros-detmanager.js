@@ -60,31 +60,72 @@ class Detalle {
 
 		let
 		tableElement = document.getElementById(tableId),
-		tableParent = tableElement.parentElement;
+		tableParent = tableElement.parentElement,
+		cellsDefinition = configuration.insertAction.cells;
 
 		this.putTitle(tableParent, configuration.title.label, {displayShortcuts: configuration.title.displayShortcuts});
-		this.putInsertButton(configuration.insertAction.location, configuration.insertAction.label, configuration.insertAction.id);
+		this.putInsertButton(configuration.insertAction.location, configuration.insertAction.label, {buttonId: configuration.insertAction.id});
+
+		this.setActionToSelector(`#${configuration.insertAction.id}`, 'click', () => {
+			// Add new row to insert data.
+			this.addInsertRow(tableId, cellsDefinition);
+		});
+
 	}
 
-	static createElement(specs) {
+	static addInsertRow(tableId, cellsDefinition) {
+		let
+		table = document.getElementById(tableId),
+		rows = table.rows,
+		rowLength = rows.length,
+		newRow,
+		newCell,
+		newElement;
+
+		console.table(cellsDefinition);
+		console.log(`
+			[addInsertRow]: Parameters={tableElement: ${table.innerHTML}, cellsDefinition: ${JSON.stringify(cellsDefinition)}}
+		`);
+
+		newRow = table.querySelectorAll('tbody')[0].insertRow();
+
+		for(let spec of cellsDefinition) {
+			newCell = newRow.insertCell();
+
+			newElement = this.createDataField(spec);
+
+			if(newElement.dataset.indicator == "true")
+				newElement.value = rowLength - 1;
+
+			newCell.innerHTML = newElement.outerHTML;
+		}
+
+		console.log(newRow.outerHTML);
+	}
+
+	static setActionToSelector(selector, actionEvent, action) {
+		document.querySelector(selector).addEventListener(actionEvent, action);
+	}
+
+	static createDataField(fieldSpecification) {
 		let element = undefined;
 
-		element = document.createElement(specs.elementTag);
-		element.type = specs.fieldType;
-		if(specs.isIndicator)
-			element.dataset.indicator = specs.isIndicator;
-		
-		if(specs.colname)
-			element.dataset.dbcolumn = specs.colname;
-		
-		if(specs.cssClasses)
-			specs.cssClasses.forEach( cssClass => element.classList.add(cssClass) );
+		element = document.createElement(fieldSpecification.elementTag);
+		element.type = fieldSpecification.fieldType;
+		if(fieldSpecification.isIndicator)
+			element.dataset.indicator = fieldSpecification.isIndicator;
 
-		if(specs.elementStyle)
-			specs.elementStyle.forEach( elem => element.style[elem.prop] = elem.value );
-		
-		if(specs.elementAttributes)
-			specs.elementAttributes.forEach( attrib => element.setAttribute(attrib.attr, attrib.value) );
+		if(fieldSpecification.colname)
+			element.dataset.dbcolumn = fieldSpecification.colname;
+
+		if(fieldSpecification.cssClasses)
+			fieldSpecification.cssClasses.forEach( cssClass => element.classList.add(cssClass) );
+
+		if(fieldSpecification.elementStyle)
+			fieldSpecification.elementStyle.forEach( elem => element.style[elem.prop] = elem.value );
+
+		if(fieldSpecification.elementAttributes)
+			fieldSpecification.elementAttributes.forEach( attrib => element.setAttribute(attrib.attr, attrib.value) );
 
 		return element;
 	}
@@ -95,7 +136,7 @@ class Detalle {
 		let buttonComponent = `<input type="button" value="${buttonLabel}" id="${buttonId}" class="boton">`;
 
 		locationElement.innerHTML = buttonComponent + locationElement.innerHTML;
-		
+
 	}
 
 	static putTitle(locationElement=undefined, titleLabel="ITEMS", {displayShortcuts=false}) {
