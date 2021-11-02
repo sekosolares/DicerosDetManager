@@ -52,7 +52,7 @@ class Detalle {
 	};
 
 	constructor(tableId) {
-		this.tableId = tableId;		
+		this.tableId = tableId;
 	}
 
 	static toDetTable(tableId=undefined, configuration) {
@@ -71,6 +71,75 @@ class Detalle {
 			this.addInsertRow(tableId, cellsDefinition);
 		});
 
+	}
+
+
+	static dbInsert(dbTable, dbColumns, {confirmBefore=false, syntaxPerValue=this.sintaxisPorTipo, onSaveCallback}){
+		let columnas = dbColumns,
+			valores = [],
+			confirmado = confirmBefore ? confirm("Desea guardar el registro?") : true,
+			params = [];
+
+		for (let colname of columnas) {
+			let
+			field = document.querySelector(`[data-dbcolumn="${colname}"]`),
+			fieldType = field.getAttribute("type") ? field.getAttribute("type").toUpperCase() : "HIDDEN",
+			valor = "";
+
+			console.info(`[saveReg]: field = ${field.parentElement} | fieldType = ${fieldType}`);
+
+			if(!field.dataset.type && !fieldType)
+				return console.error(`[saveReg]: Ocurrio un error al intentar guardar. No se encontro ningun tipo de dato para el campo ${colname}`);
+
+			if (!fieldType || fieldType == "HIDDEN")
+				fieldType = field.dataset.type.toUpperCase();
+
+			console.info(
+				`[saveReg]: fieldType [after validation] = ${fieldType} | syntaxValue: ${syntaxValue}`
+			);
+
+			valor = syntaxPerValue[fieldType].replace(/:VALUE/g, field.value);
+			valores.push(valor);
+		}
+
+		params = [
+			"tp=P",
+			"m=I",
+			"l=" + valores.join("|"),
+			"c=" + columnas.join("|"),
+			"t=" + dbTable,
+		];
+		params = params.join("&");
+
+		let url = document.location.href;
+		url = url.substring(0, url.lastIndexOf("Sistema/") + 7);
+		url += "/getdata?" + params;
+
+		console.log(
+			`[onSaveReg]: callback=${onSaveCallback}`
+		);
+
+		if (confirmado) {
+			fetch(encodeURI(url)).then((response) => {
+				if (response.ok) {
+					response.text().then((response) => {
+						if (response != 1) {
+							alert("Algo salio mal al grabar el detalle!");
+							console.error(
+								"Ocurrio un error al guardar detalle. Info: " + response
+							);
+						} else {
+							if (onSaveCallback)
+								onSaveCallback();
+							if (document.querySelector("a[title*='Refrescar']"))
+								document.querySelector("a[title*='Refrescar']").click();
+							else
+								document.location.reload();
+						}
+					});
+				}
+			});
+		}
 	}
 
 	static addInsertRow(tableId, cellsDefinition) {
@@ -114,6 +183,9 @@ class Detalle {
 		element.type = fieldSpecification.fieldType;
 		if(fieldSpecification.isIndicator)
 			element.dataset.indicator = fieldSpecification.isIndicator;
+
+		if(fieldSpecification.dataType)
+			element.dataset.type = fieldSpecification.dataType;
 
 		if(fieldSpecification.colname)
 			element.dataset.dbcolumn = fieldSpecification.colname;
