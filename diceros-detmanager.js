@@ -95,7 +95,7 @@ class Detalle {
 				fieldType = field.dataset.type.toUpperCase();
 
 			console.info(
-				`[saveReg]: fieldType [after validation] = ${fieldType} | syntaxValue: ${syntaxValue}`
+				`[saveReg]: fieldType [after validation] = ${fieldType} | syntaxValue: ${syntaxPerValue}`
 			);
 
 			valor = syntaxPerValue[fieldType].replace(/:VALUE/g, field.value);
