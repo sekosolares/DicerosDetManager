@@ -74,11 +74,12 @@ class Detalle {
 	}
 
 
-	static dbInsert(dbTable, dbColumns, {confirmBefore=false, syntaxPerValue=this.sintaxisPorTipo, onSaveCallback}){
+	static dbInsert(dbTable, dbColumns, {confirmBefore, onSaveCallback}){
 		let columnas = dbColumns,
 			valores = [],
 			confirmado = confirmBefore ? confirm("Desea guardar el registro?") : true,
-			params = [];
+			params = [],
+			syntaxPerValue=this.sintaxisPorTipo;
 
 		for (let colname of columnas) {
 			let
