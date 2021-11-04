@@ -67,7 +67,6 @@ class Detalle {
 		this.putInsertButton(configuration.insertAction.location, configuration.insertAction.label, {buttonId: configuration.insertAction.id});
 
 		this.setActionToSelector(`#${configuration.insertAction.id}`, 'click', () => {
-			// Add new row to insert data.
 			this.addInsertRow(tableId, cellsDefinition);
 		});
 
