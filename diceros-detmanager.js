@@ -143,6 +143,44 @@ class Detalle {
 		}
 	}
 
+	static dbDelete(dbTable, dbArrWhere, {confirmBefore, onSaveCallback}) {
+		let
+		params = [
+			'tp=P', 'm=D', `t=${dbTable}`, `l=${dbArrWhere.join(' and ')}`
+		],
+		confirmado = confirmBefore ? confirm("Desea guardar el registro?") : true,
+		url = document.location.href;
+
+		url = url.substring(0, url.lastIndexOf("Sistema/") + 7);
+		url += "/getdata?" + params;
+
+
+		if(confirmado) {
+			fetch(encodeURI(url))
+			.then( response => {
+				if (response.ok) {
+					response.text()
+					.then(response => {
+						if (response.length > 2) {
+							alert("Ocurrio un error al eliminar!");
+							console.error("Ocurrio un error al eliminar detalle. Info: " + response);
+						} else {
+							if (onSaveCallback)
+								onSaveCallback();
+							if (document.querySelector("a[title*='Refrescar']"))
+								document.querySelector("a[title*='Refrescar']").click();
+							else
+								document.location.reload();
+						}
+					});
+				}
+			})
+			.catch(error => {
+				alert(`Algo salio mal ${error}`);
+			});
+		}
+	}
+
 	static addInsertRow(tableId, cellsDefinition) {
 		let
 		table = document.getElementById(tableId),
