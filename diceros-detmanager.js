@@ -143,7 +143,7 @@ class Detalle {
 		}
 	}
 
-	static dbDelete(dbTable, dbArrWhere, {confirmBefore, onSaveCallback}) {
+	static dbDelete(dbTable, dbArrWhere, {confirmBefore, onDeleteCallback}) {
 		let
 		params = [
 			'tp=P', 'm=D', `t=${dbTable}`, `l=${dbArrWhere.join(' and ')}`
@@ -165,7 +165,7 @@ class Detalle {
 							alert("Ocurrio un error al eliminar!");
 							console.error("Ocurrio un error al eliminar detalle. Info: " + response);
 						} else {
-							if (onSaveCallback)
+							if (onDeleteCallback)
 								onSaveCallback();
 							if (document.querySelector("a[title*='Refrescar']"))
 								document.querySelector("a[title*='Refrescar']").click();
