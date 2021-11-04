@@ -74,8 +74,8 @@ class Detalle {
 	}
 
 
-	static dbInsert(dbTable, dbColumns, {confirmBefore, onSaveCallback}){
-		let columnas = dbColumns,
+	static dbInsert(dbTable, dbArrColumns, {confirmBefore, onSaveCallback}){
+		let columnas = dbArrColumns,
 			valores = [],
 			confirmado = confirmBefore ? confirm("Desea guardar el registro?") : true,
 			params = [],
@@ -116,9 +116,7 @@ class Detalle {
 		url = url.substring(0, url.lastIndexOf("Sistema/") + 7);
 		url += "/getdata?" + params;
 
-		console.log(
-			`[onSaveReg]: callback=${onSaveCallback}`
-		);
+		console.log(`[onSaveReg]: callback=${onSaveCallback}`);
 
 		if (confirmado) {
 			fetch(encodeURI(url)).then((response) => {
@@ -143,12 +141,50 @@ class Detalle {
 		}
 	}
 
+	static dbUpdate(dbTable, dbArrColumns, dbArrWhere, {confirmBefore, onSaveCallback}) {
+		let
+		url = document.location.href,
+		confirmado = confirmBefore ? confirm("Desea actualizar el registro?") : true,
+		params = [
+			'tp=P', 'm=U', `t=${dbTable}`,
+			`c=${dbArrColumns.join('|')}`,
+			`l=${dbArrWhere.join(' and ')}`
+		];
+
+		url = url.substring(0, url.lastIndexOf('Sistema/') + 7 );
+		url += '/getdata?';
+		url += params.join('&');
+
+		if(confirmado) {
+			fetch(encodeURI(url))
+			.then(response => {
+				if (response.ok) {
+					response.text()
+					.then(response => {
+						if (response.length > 2) {
+							alert("Ocurrio un error al actualizar linea " + linea);
+							console.error("Ocurrio un error al actualizar linea " + linea + ". Info: " + response);
+						} else {
+							if (onSaveCallback)
+								onSaveCallback();
+
+							if (document.querySelector("a[title*='Refrescar']"))
+								document.querySelector("a[title*='Refrescar']").click();
+							else
+								document.location.reload();
+						}
+					});
+				}
+			});
+		}
+	}
+
 	static dbDelete(dbTable, dbArrWhere, {confirmBefore, onDeleteCallback}) {
 		let
 		params = [
 			'tp=P', 'm=D', `t=${dbTable}`, `l=${dbArrWhere.join(' and ')}`
 		],
-		confirmado = confirmBefore ? confirm("Desea guardar el registro?") : true,
+		confirmado = confirmBefore ? confirm("Desea eliminar el registro?") : true,
 		url = document.location.href;
 
 		url = url.substring(0, url.lastIndexOf("Sistema/") + 7);
