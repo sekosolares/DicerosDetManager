@@ -73,7 +73,7 @@ class Detalle {
 	}
 
 
-	static dbInsert(dbTable, dbArrColumns, {confirmBefore, onSaveCallback}){
+	static dbInsert(dbTable, dbArrColumns, {confirmBefore=false, hasDebug=false, onSaveCallback}){
 		let columnas = dbArrColumns,
 			valores = [],
 			confirmado = confirmBefore ? confirm("Desea guardar el registro?") : true,
@@ -140,7 +140,7 @@ class Detalle {
 		}
 	}
 
-	static dbUpdate(dbTable, dbArrColumns, dbArrWhere, {confirmBefore, onSaveCallback}) {
+	static dbUpdate(dbTable, dbArrColumns, dbArrWhere, {confirmBefore=false, hasDebug=false, onSaveCallback}) {
 		let
 		url = document.location.href,
 		confirmado = confirmBefore ? confirm("Desea actualizar el registro?") : true,
@@ -178,7 +178,9 @@ class Detalle {
 		}
 	}
 
-	static dbDelete(dbTable, dbArrWhere, {confirmBefore, onDeleteCallback}) {
+	static dbDelete(dbTable, dbArrWhere, {confirmBefore=false, hasDebug=false, onDeleteCallback}) {
+		if(hasDebug)
+			debugger;
 		let
 		params = [
 			'tp=P', 'm=D', `t=${dbTable}`, `l=${dbArrWhere.join(' and ')}`
@@ -188,8 +190,6 @@ class Detalle {
 
 		url = url.substring(0, url.lastIndexOf("Sistema/") + 7);
 		url += "/getdata?" + params;
-
-		console.log(`[dbDelete]: url = ${url}, con el url encoded = ${encodeURI(url)}`);
 
 		if(confirmado) {
 			fetch(encodeURI(url))
