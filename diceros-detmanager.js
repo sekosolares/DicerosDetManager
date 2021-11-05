@@ -189,6 +189,7 @@ class Detalle {
 		url = url.substring(0, url.lastIndexOf("Sistema/") + 7);
 		url += "/getdata?" + params;
 
+		console.log(`[dbDelete]: url = ${url}, con el url encoded = ${encodeURI(url)}`);
 
 		if(confirmado) {
 			fetch(encodeURI(url))
