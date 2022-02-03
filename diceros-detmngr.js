@@ -1,7 +1,7 @@
 class Detalle {
       static detStyle = `
 	<style>
-		.shortcut-label {
+		.detmanager-shortcut-label {
 			color:#555;
 			border:1px solid #555;
 			border-radius:4px;
@@ -9,12 +9,12 @@ class Detalle {
 			margin-right: 4px;
 			font-size: 1em;
 		}
-		.table-det-block {
+		.detmanager-table-det-block {
 			margin-bottom: 1em;
 			margin-top: 1em;
 			font-family: 'Segoe UI', Arial, sans-serif;
 		}
-		.table-det-title {
+		.detmanager-table-det-title {
 			letter-spacing: 2px;
 			text-align: center;
 			font-weight: 600;
@@ -23,21 +23,21 @@ class Detalle {
 			padding-right: 30px;
 			display: inline;
 		}
-		.boton {
+		.detmanager-boton {
 			background-color: #306FAB;
 			border-radius: 5px;
 			border: 1px solid #306FAB;
 			color: #FFFFFF;
 			padding: 4px 8px;
 		}
-		.boton:hover {
+		.detmanager-boton:hover {
 			background-color: #0C5AA6;
 			border: 1px solid #0C5AA6;
 			cursor: pointer;
 			color: #FFFFFF;
 			padding: 4px 8px;
 		}
-		input.boton:focus {
+		input.detmanager-boton:focus {
 			border: 1px solid #07C;
 			border-radius: 2px;
 			box-shadow: 3px 3px 3px #9A9A9A;
@@ -96,7 +96,7 @@ class Detalle {
 		});
 	}
 
-	static transformExistingCells({tableId, columnsDefinition=[], cellsDefinition={totalized: true, idAuto: true}} = {}) {
+	static transformExistingCells({tableId, columnsDefinition=[], cellsDefinition={}} = {}) {
 		let table = document.getElementById(tableId),
 		tblBody = table.querySelectorAll('tbody')[0],
 		rows = tblBody.rows;
@@ -182,7 +182,7 @@ class Detalle {
 
 		return fieldDefinition;
 
-	};
+	}
 
 	static getDataFieldByDefinition(fieldDefinition) {
 		let element = undefined;
@@ -216,7 +216,7 @@ class Detalle {
 		return element;
 	}
 
-	static putAddButton({locationElement="default", buttonLabel="Agregar Item", buttonId="pbDetManagerAddItem", cssClases=['boton'], attrs=[{att: 'title', val: 'Agregar nuevo Item'}]} = {}) {
+	static putAddButton({locationElement="default", buttonLabel="Agregar Item", buttonId="pbDetManagerAddItem", cssClases=['detmanager-boton'], attrs=[{att: 'title', val: 'Agregar nuevo Item'}]} = {}) {
 		if(locationElement == "default") locationElement = document.getElementById("DetManager_Detail_Actions");
 
 
@@ -233,14 +233,14 @@ class Detalle {
 		if(!locationElement) return console.error("Parametro %clocationElement no definido!", "font-style:italic;color:#07C;");
 
 		let titleComponent = `${this.detStyle}
-			<div class="table-det-block" id="Detail_Title">
+			<div class="detmanager-table-det-block" id="Detail_Title">
 				<div style="display:inline-block" id="DetManager_Detail_Actions"></div>
-				<div class="table-det-title"> ${titleLabel} </div>
+				<div class="detmanager-table-det-title"> ${titleLabel} </div>
 				<div ${displayShortcuts ? "style='display:inline-block'" : "style='display:none'"}>
-					<b class="shortcut-label"> F3 </b><span> Agregar &nbsp; </span>
-					<b class="shortcut-label"> F4 </b><span> Grabar  &nbsp; </span>
-					<b class="shortcut-label"> F6 </b><span> Actualizar &nbsp; </span>
-					<b class="shortcut-label"> F10 </b><span> Eliminar </span>
+					<b class="detmanager-shortcut-label"> F3 </b><span> Agregar &nbsp; </span>
+					<b class="detmanager-shortcut-label"> F4 </b><span> Grabar  &nbsp; </span>
+					<b class="detmanager-shortcut-label"> F6 </b><span> Actualizar &nbsp; </span>
+					<b class="detmanager-shortcut-label"> F10 </b><span> Eliminar </span>
 				</div>
 			</div>`;
 
