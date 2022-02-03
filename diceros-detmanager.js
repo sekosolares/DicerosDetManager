@@ -52,10 +52,6 @@ class Detalle {
 	};
 	static dbDefinition = [];
 
-	constructor(tableId) {
-		this.tableId = tableId;
-	}
-
 	static toDetTable(tableId=undefined, configuration) {
 		if(Object.keys(configuration).length == 0) return console.error("Parametro %cconfiguration vacio. Imposible convertir a tabla detalle.", "font-style:italic;color:#C7C;");
 
