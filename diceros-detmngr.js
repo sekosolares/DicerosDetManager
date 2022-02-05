@@ -97,7 +97,7 @@ class Detalle {
 	}
 
 	static getCuratedRows({rowsArr, hasTHead, totalized}) {
-		let newRowArr = []; debugger;
+		let newRowArr = [];
 		for(let row of rowsArr) {
 			if(!hasTHead) {
 				if(row.rowIndex == 0)
@@ -112,7 +112,14 @@ class Detalle {
 		return newRowArr;
 	}
 
-	static transformExistingCells({tableId, columnsDefinition=[], cellsDefinition={}} = {}) {
+	static getSpecificProp({specificColnameDefs={default: {clases:[], attrs: []}}, colname="default", propName=""} = {}) {
+		if(specificColnameDefs[colname])
+			return specificColnameDefs[colname][propName];
+		else
+			return [];
+	}
+
+	static transformExistingCells({tableId, columnsDefinition=[], cellsDefinition={defins: {}}} = {}) {
 		let table = document.getElementById(tableId),
 		tblBody = table.querySelectorAll('tbody')[0],
 		rows = tblBody.rows;
@@ -122,14 +129,22 @@ class Detalle {
 		for( let row of rows ) {
 			let cells = row.cells;
 			for( let cell of cells ) {
+				let colname = columnsDefinition[cell.cellIndex] ? columnsDefinition[cell.cellIndex].split(':')[0] : "";
+				let specificFieldClasses = this.getSpecificProp({specificColnameDefs: cellsDefinition.defins, colname: colname, propName: 'clases'});
+				let specificFieldAttribs = this.getSpecificProp({specificColnameDefs: cellsDefinition.defins, colname: colname, propName: 'attrs'});
 				let value = cell.innerHTML.trim();
 				let fieldDef = this.getFieldDefinition(columnsDefinition[cell.cellIndex]);
 				let fieldElem = "";
 
-				if( fieldDef !== 'combo' )
+				if( fieldDef !== 'combo' ) {
+					fieldDef.cssClasses = [ ...cellsDefinition.globalClases, ...specificFieldClasses ?? [] ];
+					fieldDef.elementAttributes = specificFieldAttribs;
 					fieldElem = this.getDataFieldByDefinition(fieldDef);
-				else
-					fieldElem = this.getComboElement(columnsDefinition[cell.cellIndex]);
+				} else {
+					let comboClases = [ ...cellsDefinition.globalClases, ...specificFieldClasses ?? [] ];
+					let comboAttribs = specificFieldAttribs;
+					fieldElem = this.getComboElement({definitionStr: columnsDefinition[cell.cellIndex], classes: comboClases, attrs: comboAttribs});
+				}
 
 				cell.innerHTML = '';
 				cell.append(fieldElem);
@@ -151,7 +166,7 @@ class Detalle {
 		return exists;
 	}
 
-	static getComboElement(definitionStr="") {
+	static getComboElement({definitionStr="", classes=[], attrs=[]} = {}) {
 		// Ejemplos:
 		// clase_producto:number:select:1=Maduro, 2=Pergo, 3=Humedo
 		// proyecto:number:select:SRC#PROYECTO
@@ -174,8 +189,13 @@ class Detalle {
 			});
 		}
 
+		selectElement.classList.forEach(clase => selectElement.classList.remove(clase));
+		selectElement.removeAttribute('id');
+		selectElement.removeAttribute('name');
 		selectElement.dataset.type = arrSpecs[1];
 		selectElement.dataset.dbcolumn = arrSpecs[0];
+		classes.forEach( cssClass => selectElement.classList.add(cssClass) );
+		attrs.forEach( attrib => selectElement.setAttribute(attrib.att, attrib.val) );
 
 		return selectElement;
 
@@ -228,7 +248,7 @@ class Detalle {
 			fieldDefinition.elementStyle.forEach( elem => element.style[elem.prop] = elem.value );
 
 		if(fieldDefinition.elementAttributes)
-			fieldDefinition.elementAttributes.forEach( attrib => element.setAttribute(attrib.attr, attrib.value) );
+			fieldDefinition.elementAttributes.forEach( attrib => element.setAttribute(attrib.att, attrib.val) );
 
 		return element;
 	}
