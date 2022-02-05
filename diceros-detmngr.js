@@ -76,10 +76,10 @@ class Detalle {
 		this.setDatasetToPKs(columns.pkFields);
 
 		// Colocar titulo en la tabla.
-		this.putTitle({locationElement: parent, titleLabel: title.label, displayShortcuts: title.displayShortcuts});
+		this.putTitle({tableId: tableId, locationElement: parent, titleLabel: title.label, displayShortcuts: title.displayShortcuts});
 
 		// Poner boton para agregar nuevo item.
-		this.putAddButton({locationElement: add.location, buttonLabel: add.label, buttonId: add.id, attrs: add.attrs});
+		this.putAddButton({tableId: tableId, locationElement: add.location, buttonLabel: add.label, buttonId: add.id, attrs: add.attrs});
 
 		// Transformar celdas existentes en campos editables.
 		this.transformExistingCells({tableId: tableId, columnsDefinition: columns.tableFields, cellsDefinition: cellsDef});
@@ -96,29 +96,45 @@ class Detalle {
 		});
 	}
 
+	static getCuratedRows({rowsArr, hasTHead, totalized}) {
+		let newRowArr = []; debugger;
+		for(let row of rowsArr) {
+			if(!hasTHead) {
+				if(row.rowIndex == 0)
+					continue;
+				if(totalized && (row.rowIndex + 1) == rowsArr.length)
+					continue;
+			}
+			if(hasTHead && totalized && row.rowIndex == rowsArr.length)
+				continue;
+			newRowArr.push(row);
+		}
+		return newRowArr;
+	}
+
 	static transformExistingCells({tableId, columnsDefinition=[], cellsDefinition={}} = {}) {
 		let table = document.getElementById(tableId),
 		tblBody = table.querySelectorAll('tbody')[0],
 		rows = tblBody.rows;
 
+		rows = this.getCuratedRows({rowsArr: rows, hasTHead: cellsDefinition.hasTHead, totalized: cellsDefinition.totalized});
+
 		for( let row of rows ) {
 			let cells = row.cells;
-			if( row.rowIndex < rows.length || !cellsDefinition.totalized ) { // Si no esta totalizada, la ultima linea tambien es utilizable.
-				for( let cell of cells ) {
-					let value = cell.innerHTML.trim();
-					let fieldDef = this.getFieldDefinition(columnsDefinition[cell.cellIndex]);
-					let fieldElem = "";
+			for( let cell of cells ) {
+				let value = cell.innerHTML.trim();
+				let fieldDef = this.getFieldDefinition(columnsDefinition[cell.cellIndex]);
+				let fieldElem = "";
 
-					if( fieldDef !== 'combo' )
-						fieldElem = this.getDataFieldByDefinition(fieldDef);
-					else
-						fieldElem = this.getComboElement(columnsDefinition[cell.cellIndex]);
+				if( fieldDef !== 'combo' )
+					fieldElem = this.getDataFieldByDefinition(fieldDef);
+				else
+					fieldElem = this.getComboElement(columnsDefinition[cell.cellIndex]);
 
-					cell.innerHTML = '';
-					cell.append(fieldElem);
+				cell.innerHTML = '';
+				cell.append(fieldElem);
 
-					fieldElem.value = value;
-				}
+				fieldElem.value = value;
 			}
 		}
 
@@ -136,6 +152,7 @@ class Detalle {
 	}
 
 	static getComboElement(definitionStr="") {
+		// Ejemplos:
 		// clase_producto:number:select:1=Maduro, 2=Pergo, 3=Humedo
 		// proyecto:number:select:SRC#PROYECTO
 		let selectElement = document.createElement('select');
@@ -216,8 +233,8 @@ class Detalle {
 		return element;
 	}
 
-	static putAddButton({locationElement="default", buttonLabel="Agregar Item", buttonId="pbDetManagerAddItem", cssClases=['detmanager-boton'], attrs=[{att: 'title', val: 'Agregar nuevo Item'}]} = {}) {
-		if(locationElement == "default") locationElement = document.getElementById("DetManager_Detail_Actions");
+	static putAddButton({tableId, locationElement="default", buttonLabel="Agregar Item", buttonId="pbDetManagerAddItem", cssClases=['detmanager-boton'], attrs=[{att: 'title', val: 'Agregar nuevo Item'}]} = {}) {
+		if(locationElement == "default") locationElement = document.getElementById(`DetManager_${tableId}_Detail_Actions`);
 
 
 		let buttonComponent = `<input type="button" value="${buttonLabel}" id="${buttonId}" class="${cssClases.join(' ')}">`;
@@ -229,12 +246,12 @@ class Detalle {
 		});
 	}
 
-	static putTitle({locationElement, titleLabel="ITEMS", displayShortcuts=false} = {}) {
+	static putTitle({tableId, locationElement, titleLabel="ITEMS", displayShortcuts=false} = {}) {
 		if(!locationElement) return console.error("Parametro %clocationElement no definido!", "font-style:italic;color:#07C;");
 
 		let titleComponent = `${this.detStyle}
 			<div class="detmanager-table-det-block" id="Detail_Title">
-				<div style="display:inline-block" id="DetManager_Detail_Actions"></div>
+				<div style="display:inline-block" id="DetManager_${tableId}_Detail_Actions"></div>
 				<div class="detmanager-table-det-title"> ${titleLabel} </div>
 				<div ${displayShortcuts ? "style='display:inline-block'" : "style='display:none'"}>
 					<b class="detmanager-shortcut-label"> F3 </b><span> Agregar &nbsp; </span>
