@@ -81,8 +81,8 @@ class Detalle {
 		// Poner boton para agregar nuevo item.
 		this.putAddButton({tableId: tableId, locationElement: add.location, buttonLabel: add.label, buttonId: add.id, attrs: add.attrs});
 
-		// Transformar celdas existentes en campos editables.
-		this.transformExistingCells({tableId: tableId, columnsDefinition: columns.tableFields, cellsDefinition: cellsDef});
+		// Transformar celdas existentes en campos editables, basado en las definiciones.
+		this.transformExistingCells({tableId: tableId, columnsDefinition: columns.tableFields, pkDefinitions: columns.pkFields, cellsDefinition: cellsDef});
 	}
 
 	static setDatasetToPKs(pkColumnsDef=[]) {
@@ -119,7 +119,7 @@ class Detalle {
 			return [];
 	}
 
-	static transformExistingCells({tableId, columnsDefinition=[], cellsDefinition={defins: {}}} = {}) {
+	static transformExistingCells({tableId, columnsDefinition=[], pkDefinitions=[], cellsDefinition={defins: {}}} = {}) {
 		let table = document.getElementById(tableId),
 		tblBody = table.querySelectorAll('tbody')[0],
 		rows = tblBody.rows;
@@ -153,6 +153,24 @@ class Detalle {
 			}
 		}
 
+	}
+
+	static setIdsByColumns({tableId="", dbcolumns={pkFields:[], tableFields:[]}, cells={hasTHead: false, totalized: true}} = {}) {
+		let tabla = document.getElementById(tableId),
+		tBody = tabla.querySelectorAll('tbody')[0],
+		rows = tBody.rows,
+		id = "DetMngr_";
+
+		rows = this.getCuratedRows({rowsArr: rows, hasTHead: cells.hasTHead, totalized: cells.totalized});
+
+		dbcolumns.pkFields.forEach(colStr => {y
+			// Ej. "empresa:number:input#EMPRESA"
+			let info = colStr.split(':');
+			let pkFieldId = info[2].split('#')[1]; // EMPRESA
+			let pkValue = document.getElementById(pkFieldId).value;
+
+			id += pkValue;
+		});
 	}
 
 	static fieldExists(arrSpecs) {
