@@ -83,6 +83,9 @@ class Detalle {
 
 		// Transformar celdas existentes en campos editables, basado en las definiciones.
 		this.transformExistingCells({tableId: tableId, columnsDefinition: columns.tableFields, pkDefinitions: columns.pkFields, cellsDefinition: cellsDef});
+
+		// Asignar Ids con las columnas.
+		this.setIdsByColumns({tableId: tableId, dbcolumns: columns, cells: cellsDef});
 	}
 
 	static setDatasetToPKs(pkColumnsDef=[]) {
@@ -155,22 +158,57 @@ class Detalle {
 
 	}
 
+	static getIndicatorValueByCells(cellsArr=[]) {
+		let indicatorValue = -1;
+		for(let cell of cellsArr) {
+			let fields = cell.querySelectorAll("input, select");
+			fields.forEach(elem => {
+				if(elem.dataset.indicator == 'true')
+					indicatorValue = elem.value;
+			});
+		}
+
+		return indicatorValue;
+	}
+
 	static setIdsByColumns({tableId="", dbcolumns={pkFields:[], tableFields:[]}, cells={hasTHead: false, totalized: true}} = {}) {
 		let tabla = document.getElementById(tableId),
 		tBody = tabla.querySelectorAll('tbody')[0],
 		rows = tBody.rows,
-		id = "DetMngr_";
+		id = "",
+		suffix = "";
 
 		rows = this.getCuratedRows({rowsArr: rows, hasTHead: cells.hasTHead, totalized: cells.totalized});
 
-		dbcolumns.pkFields.forEach(colStr => {y
+		dbcolumns.pkFields.forEach(colStr => {
 			// Ej. "empresa:number:input#EMPRESA"
 			let info = colStr.split(':');
 			let pkFieldId = info[2].split('#')[1]; // EMPRESA
 			let pkValue = document.getElementById(pkFieldId).value;
 
-			id += pkValue;
+			suffix += pkValue;
 		});
+
+		for(let row of rows) {
+			let rowCells = row.cells;
+			let indicatorValue = this.getIndicatorValueByCells(rowCells);
+			suffix += indicatorValue;
+			for(let cell of rowCells) {
+				if(dbcolumns.tableFields[cell.cellIndex]) {
+					id = "DetMngr_";
+					// "linea:number:input:INDICATOR"
+					let fieldInfo = dbcolumns.tableFields[cell.cellIndex].split(":");
+					let elemTag = fieldInfo[2];
+					let elem = cell.querySelector(elemTag);
+
+					id += fieldInfo[0].toUpperCase();
+					id += suffix;
+
+					elem.id = id;
+				} else
+					continue;
+			}
+		}
 	}
 
 	static fieldExists(arrSpecs) {
