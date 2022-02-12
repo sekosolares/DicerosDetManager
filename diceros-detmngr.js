@@ -69,6 +69,7 @@ class Detalle {
 		parent = tabla.parentElement,
 		title = config.title,
 		add = config.addAct,
+		upd = config.updAct,
 		columns = config.dbcolumns,
 		cellsDef = config.cells;
 
@@ -86,6 +87,71 @@ class Detalle {
 
 		// Asignar Ids con las columnas.
 		this.setIdsByColumns({tableId: tableId, dbcolumns: columns, cells: cellsDef});
+
+		// Poner boton de Actualizar
+		this.putUpdateButton({tableId: tableId, updateAction: upd, pkColumnsDef: columns.pkFields, cellsDef: cellsDef});
+
+		// Agregar accion de Actualizar al updButton
+
+		// Poner boton de eliminar
+
+
+
+		// Asignar accion a AddButton
+	}
+
+	static putUpdateButton({
+		tableId="",
+		updateAction={
+			label: "Actualizar",
+			clases: ['detmanager-boton'],
+			attrs: []
+		},
+		pkColumnsDef=["empresa:number:input#EMPRESA"],
+		cellsDef={
+			totalized: true,
+			hasTHead: false
+		}
+	} = {}) {
+		if(tableId.length == 0)
+			return console.error("[putUpdateButton]: Table Id not defined!");
+
+		let tabla = document.getElementById(tableId),
+		tBody = tabla.querySelectorAll("tbody")[0],
+		rows = tBody.rows,
+		pbId = "DetMngr_PbUpd_",
+		suffix = "",
+		updElem = document.createElement('input');
+
+		pkColumnsDef.forEach(colStr => {
+			// Ej. "empresa:number:input#EMPRESA"
+			let info = colStr.split(':');
+			let pkFieldId = info[2].split('#')[1]; // EMPRESA
+			let pkValue = document.getElementById(pkFieldId).value;
+
+			suffix += pkValue;
+		});
+
+		updElem.type = 'button';
+		if(updateAction.clases)
+			updateAction.clases.forEach(cssClass => updElem.classList.add(cssClass));
+		updElem.value = updateAction.label;
+		updElem.dataset.action = "update";
+		if(updateAction.attrs)
+			updateAction.attrs.forEach( elem => updElem.setAttribute(elem.att, elem.val));
+
+		rows = this.getCuratedRows({rowsArr: rows, hasTHead: cellsDef.hasTHead, totalized: cellsDef.totalized});
+
+		for(let row of rows) {
+			let lineValue = row.querySelector("[data-indicator='true']").value;
+			let cells = row.cells;
+
+			suffix += lineValue;
+			pbId += suffix;
+			updElem.id = pbId;
+
+			cells[cells.length - 1].append(updElem);
+		}
 	}
 
 	static setDatasetToPKs(pkColumnsDef=[]) {
