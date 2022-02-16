@@ -100,6 +100,20 @@ class Detalle {
 		// Asignar accion a AddButton
 	}
 
+	static getSuffixByColumns(pkColumnsDef) {
+		let suffix = "";
+		pkColumnsDef.forEach(colStr => {
+			// Ej. "empresa:number:input#EMPRESA"
+			let info = colStr.split(':');
+			let pkFieldId = info[2].split('#')[1]; // EMPRESA
+			let pkValue = document.getElementById(pkFieldId).value;
+
+			suffix += pkValue;
+		});
+
+		return suffix;
+	}
+
 	static putUpdateButton({
 		tableId="",
 		updateAction={
@@ -123,14 +137,7 @@ class Detalle {
 		suffix = "",
 		updElem = document.createElement('input');
 
-		pkColumnsDef.forEach(colStr => {
-			// Ej. "empresa:number:input#EMPRESA"
-			let info = colStr.split(':');
-			let pkFieldId = info[2].split('#')[1]; // EMPRESA
-			let pkValue = document.getElementById(pkFieldId).value;
-
-			suffix += pkValue;
-		});
+		suffix = this.getSuffixByColumns(pkColumnsDef);
 
 		updElem.type = 'button';
 		if(updateAction.clases)
@@ -246,14 +253,7 @@ class Detalle {
 
 		rows = this.getCuratedRows({rowsArr: rows, hasTHead: cells.hasTHead, totalized: cells.totalized});
 
-		dbcolumns.pkFields.forEach(colStr => {
-			// Ej. "empresa:number:input#EMPRESA"
-			let info = colStr.split(':');
-			let pkFieldId = info[2].split('#')[1]; // EMPRESA
-			let pkValue = document.getElementById(pkFieldId).value;
-
-			suffix += pkValue;
-		});
+		suffix = this.getSuffixByColumns(dbcolumns.pkFields);
 
 		for(let row of rows) {
 			let rowCells = row.cells;
