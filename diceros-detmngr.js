@@ -71,6 +71,7 @@ class Detalle {
 		add = config.addAct,
 		upd = config.updAct,
 		columns = config.dbcolumns,
+		dbTable = config.dbtable,
 		cellsDef = config.cells;
 
 		// Actualizar data de las PKs
@@ -89,15 +90,230 @@ class Detalle {
 		this.setIdsByColumns({tableId: tableId, dbcolumns: columns, cells: cellsDef});
 
 		// Poner boton de Actualizar
-		this.putUpdateButton({tableId: tableId, updateAction: upd, pkColumnsDef: columns.pkFields, cellsDef: cellsDef});
-
-		// Agregar accion de Actualizar al updButton
+		this.putUpdateButton({tableId: tableId, updateAction: upd, dbTable: dbTable, columnsDef: columns, cellsDef: cellsDef});
 
 		// Poner boton de eliminar
 
 
-
 		// Asignar accion a AddButton
+	}
+
+	static dbDelete({dbTable="", dbArrWhere=[], confirmBefore=false, onDeleteCallback=undefined} = {}) {
+		let
+		params = [
+			'tp=P', 'm=D', `t=${dbTable}`, `l=${dbArrWhere.join(' and ')}`
+		],
+		confirmado = confirmBefore ? confirm("Desea eliminar el registro?") : true,
+		url = document.location.href;
+
+		url = url.substring(0, url.lastIndexOf("Sistema/") + 7);
+		url += "/getdata?" + params;
+
+		if(confirmado) {
+			fetch(encodeURI(url))
+			.then( response => {
+				if (response.ok) {
+					response.text()
+					.then(response => {
+						if (response.length > 2) {
+							alert("Ocurrio un error al eliminar!");
+							console.error("Ocurrio un error al eliminar detalle. Info: " + response);
+						} else {
+							if (onDeleteCallback)
+								onSaveCallback();
+							if (document.querySelector("a[title*='Refrescar']"))
+								document.querySelector("a[title*='Refrescar']").click();
+							else
+								document.location.reload();
+						}
+					});
+				}
+			})
+			.catch(error => {
+				alert(`Algo salio mal ${error}`);
+			});
+		}
+	}
+
+	static putDeleteButton({
+		tableId="",
+		deleteAction={
+			label: "Eliminar",
+			clases: ['detmanager-boton'],
+			confirmBefore: false,
+			attrs: []
+		},
+		dbTable="esquema.tabla",
+		columnsDef={
+			pkFields: ["pkcolumn:number:input#PKID"],
+			tableFields: ["column:number:input"]
+		},
+		cellsDef={
+			totalized: true,
+			hasTHead: false
+		}
+	} = {}) {
+		if(tableId.length == 0)
+			return console.error("[putUpdateButton]: Table Id not defined!");
+
+		let tabla = document.getElementById(tableId),
+		tBody = tabla.querySelectorAll("tbody")[0],
+		rows = tBody.rows,
+		pbId = "DetMngr_PbUpd_",
+		suffix = "";
+
+		suffix = this.getSuffixByColumns(columnsDef.pkFields);
+		rows = this.getCuratedRows({rowsArr: rows, hasTHead: cellsDef.hasTHead, totalized: cellsDef.totalized});
+
+		for(let row of rows) {
+			let updElem = document.createElement('input');
+			let indicatorElement = row.querySelector("[data-indicator='true']");
+			let cells = row.cells;
+
+			updElem.type = 'button';
+
+			if(deleteAction.clases)
+				deleteAction.clases.forEach(cssClass => updElem.classList.add(cssClass));
+
+			updElem.value = deleteAction.label;
+			updElem.dataset.action = "update";
+
+			if(deleteAction.attrs)
+				deleteAction.attrs.forEach( elem => updElem.setAttribute(elem.att, elem.val));
+
+			let colsUpdNames = this.getColumnNamesByDefinition(columnsDef.tableFields);
+			let colsUpdPks = this.getColumnNamesByDefinition(columnsDef.pkFields);
+			let specificWhere = [];
+			specificWhere.push(`${indicatorElement.dataset.dbcolumn}|${
+				this.sintaxisPorTipo[indicatorElement.dataset.type.toUpperCase()].replace(/:VALUE/g, indicatorElement.value)
+			}`);
+
+			updElem.addEventListener("click", function(){
+				Detalle.dbUpdateByColumns({eventTarget: this, dbTable: dbTable, dbArrColumns: colsUpdNames, dbArrWhere: colsUpdPks, dbWhereSpecific: specificWhere, confirmBefore: deleteAction.confirmBefore, onUpdateCallback: deleteAction.callBack});
+			});
+
+			suffix += indicatorElement.value;
+			pbId += suffix;
+			updElem.id = pbId;
+
+			cells[cells.length - 1].append(updElem);
+		}
+	}
+
+	static dbUpdateByColumns({eventTarget=undefined, dbTable="", dbArrColumns=[], dbArrWhere=[], dbWhereSpecific=[], confirmBefore=false, onUpdateCallback=undefined} = {}) {
+		let
+		url = document.location.href,
+		confirmado = confirmBefore ? confirm("Desea actualizar el registro?") : true,
+		dbFields = eventTarget.parentElement.parentElement.querySelectorAll("[data-dbcolumn]"),
+		dbPkFields = document.querySelectorAll("[data-dbcolumn]"),
+		cols = [],
+		where = [],
+		params = [];
+
+		dbArrColumns = dbArrColumns.map(elem => elem.toUpperCase());
+		dbArrWhere = dbArrWhere.map(elem => elem.toUpperCase());
+
+		dbFields.forEach(field => {
+			if( dbArrColumns.includes( field.dataset.dbcolumn.toUpperCase() ) )
+			    cols.push(`${field.dataset.dbcolumn}~${
+				    this.sintaxisPorTipo[field.dataset.type.toUpperCase()].replace(/:VALUE/g, field.value)
+			    }`);
+		});
+
+		dbPkFields.forEach(field => {
+			if( dbArrWhere.includes( field.dataset.dbcolumn.toUpperCase() ) )
+			    where.push(`${field.dataset.dbcolumn}|${
+				    this.sintaxisPorTipo[field.dataset.type.toUpperCase()].replace(/:VALUE/g, field.value)
+			    }`);
+		});
+
+		where = [...where, ...dbWhereSpecific];
+
+		params = [
+			'tp=P', 'm=U', `t=${dbTable}`,
+			`c=${cols.join('|')}`,
+			`l=${where.join(' and ')}`
+		];
+
+		url = url.substring(0, url.lastIndexOf('Sistema/') + 7 );
+		url += '/getdata?';
+		url += params.join('&');
+
+		console.table({params, url, cols, where, dbArrWhere, dbArrColumns});
+
+		if(confirmado) {
+			fetch(encodeURI(url))
+			.then(response => {
+				if (response.ok) {
+					response.text()
+					.then(resp => {
+						if (resp.length > 2) {
+							alert("Ocurrio un error al actualizar.");
+							console.error("Ocurrio un error al actualizar. Info: " + resp);
+						} else {
+							if (onUpdateCallback)
+								onUpdateCallback();
+
+							if (document.querySelector("a[title*='Refrescar']"))
+								document.querySelector("a[title*='Refrescar']").click();
+							else
+								document.location.reload();
+						}
+					});
+				}
+			});
+		}
+
+	}
+
+	static dbUpdate({dbTable="", dbArrColumns=[], dbArrWhere=[], confirmBefore=false, onUpdateCallback=undefined} = {}) {
+		let
+		url = document.location.href,
+		confirmado = confirmBefore ? confirm("Desea actualizar el registro?") : true,
+		params = [
+			'tp=P', 'm=U', `t=${dbTable}`,
+			`c=${dbArrColumns.join('|')}`,
+			`l=${dbArrWhere.join(' and ')}`
+		];
+
+		url = url.substring(0, url.lastIndexOf('Sistema/') + 7 );
+		url += '/getdata?';
+		url += params.join('&');
+
+		if(confirmado) {
+			fetch(encodeURI(url))
+			.then(response => {
+				if (response.ok) {
+					response.text()
+					.then(response => {
+						if (response.length > 2) {
+							alert("Ocurrio un error al actualizar linea " + linea);
+							console.error("Ocurrio un error al actualizar linea " + linea + ". Info: " + response);
+						} else {
+							if (onUpdateCallback)
+								onUpdateCallback();
+
+							if (document.querySelector("a[title*='Refrescar']"))
+								document.querySelector("a[title*='Refrescar']").click();
+							else
+								document.location.reload();
+						}
+					});
+				}
+			});
+		}
+	}
+
+	static getColumnNamesByDefinition(dbColumnDefinition=[]) {
+		let colNamesArray = [];
+		let colInfoArray = [];
+
+		dbColumnDefinition.forEach(colDef => {
+			colInfoArray = colDef.split(':');
+			colNamesArray.push(colInfoArray[0]);
+		});
+
+		return colNamesArray;
 	}
 
 	static getSuffixByColumns(pkColumnsDef) {
@@ -119,9 +335,14 @@ class Detalle {
 		updateAction={
 			label: "Actualizar",
 			clases: ['detmanager-boton'],
+			confirmBefore: false,
 			attrs: []
 		},
-		pkColumnsDef=["empresa:number:input#EMPRESA"],
+		dbTable="esquema.tabla",
+		columnsDef={
+			pkFields: ["pkcolumn:number:input#PKID"],
+			tableFields: ["column:number:input"]
+		},
 		cellsDef={
 			totalized: true,
 			hasTHead: false
@@ -134,26 +355,39 @@ class Detalle {
 		tBody = tabla.querySelectorAll("tbody")[0],
 		rows = tBody.rows,
 		pbId = "DetMngr_PbUpd_",
-		suffix = "",
-		updElem = document.createElement('input');
+		suffix = "";
 
-		suffix = this.getSuffixByColumns(pkColumnsDef);
-
-		updElem.type = 'button';
-		if(updateAction.clases)
-			updateAction.clases.forEach(cssClass => updElem.classList.add(cssClass));
-		updElem.value = updateAction.label;
-		updElem.dataset.action = "update";
-		if(updateAction.attrs)
-			updateAction.attrs.forEach( elem => updElem.setAttribute(elem.att, elem.val));
-
+		suffix = this.getSuffixByColumns(columnsDef.pkFields);
 		rows = this.getCuratedRows({rowsArr: rows, hasTHead: cellsDef.hasTHead, totalized: cellsDef.totalized});
 
 		for(let row of rows) {
-			let lineValue = row.querySelector("[data-indicator='true']").value;
+			let updElem = document.createElement('input');
+			let indicatorElement = row.querySelector("[data-indicator='true']");
 			let cells = row.cells;
 
-			suffix += lineValue;
+			updElem.type = 'button';
+
+			if(updateAction.clases)
+				updateAction.clases.forEach(cssClass => updElem.classList.add(cssClass));
+
+			updElem.value = updateAction.label;
+			updElem.dataset.action = "update";
+
+			if(updateAction.attrs)
+				updateAction.attrs.forEach( elem => updElem.setAttribute(elem.att, elem.val));
+
+			let colsUpdNames = this.getColumnNamesByDefinition(columnsDef.tableFields);
+			let colsUpdPks = this.getColumnNamesByDefinition(columnsDef.pkFields);
+			let specificWhere = [];
+			specificWhere.push(`${indicatorElement.dataset.dbcolumn}|${
+				this.sintaxisPorTipo[indicatorElement.dataset.type.toUpperCase()].replace(/:VALUE/g, indicatorElement.value)
+			}`);
+
+			updElem.addEventListener("click", function(){
+				Detalle.dbUpdateByColumns({eventTarget: this, dbTable: dbTable, dbArrColumns: colsUpdNames, dbArrWhere: colsUpdPks, dbWhereSpecific: specificWhere, confirmBefore: updateAction.confirmBefore, onUpdateCallback: updateAction.callBack});
+			});
+
+			suffix += indicatorElement.value;
 			pbId += suffix;
 			updElem.id = pbId;
 
@@ -336,8 +570,14 @@ class Detalle {
 		fieldDefinition.fieldType = arrSpecs[1];
 		fieldDefinition.colname = arrSpecs[0];
 		fieldDefinition.dataType = arrSpecs[1];
-		if( arrSpecs.includes('INDICATOR') )
+		if( arrSpecs.includes('INDICATOR') ) {
 		    fieldDefinition.isIndicator = true;
+		    fieldDefinition.disableIndicator = true;
+		}
+		if( arrSpecs.includes('INDICATOR-E') ) {
+		    fieldDefinition.isIndicator = true;
+		    fieldDefinition.disableIndicator = false;
+		}
 
 		return fieldDefinition;
 
@@ -351,10 +591,12 @@ class Detalle {
 		if(fieldDefinition.type)
 			element.type = fieldDefinition.fieldType;
 
-		if(fieldDefinition.isIndicator) {
+		if(fieldDefinition.isIndicator)
 			element.dataset.indicator = fieldDefinition.isIndicator;
-			if( fieldDefinition.isIndicator )
-				element.disabled = true;
+
+		if( fieldDefinition.disableIndicator ) {
+			element.dataset.disableIndicator = fieldDefinition.disableIndicator;
+			element.disabled = fieldDefinition.disableIndicator;
 		}
 
 		if(fieldDefinition.dataType)
