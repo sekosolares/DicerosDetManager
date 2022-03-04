@@ -48,6 +48,7 @@ class Detalle {
 	static sintaxisPorTipo = {
 		TEXT: "':VALUE'",
 		NUMBER: ":VALUE",
+		CHECKBOX: ":VALUE",
 		DATE: "to_date(':VALUE', 'yyyy-mm-dd')",
 	};
 
@@ -71,6 +72,7 @@ class Detalle {
 		add = config.addAct,
 		upd = config.updAct,
 		del = config.delAct,
+		ins = config.insAct,
 		columns = config.dbcolumns,
 		dbTable = config.dbtable,
 		cellsDef = config.cells;
@@ -82,7 +84,8 @@ class Detalle {
 		this.putTitle({tableId: tableId, locationElement: parent, titleLabel: title.label, displayShortcuts: title.displayShortcuts});
 
 		// Poner boton para agregar nuevo item.
-		this.putAddButton({tableId: tableId, locationElement: add.location, buttonLabel: add.label, buttonId: add.id, attrs: add.attrs});
+		this.putAddButton({cellsDef: cellsDef, columns: columns, tableId: tableId, dbTable: dbTable, cssClases: add.clases,
+			locationElement: add.location, buttonLabel: add.label, buttonId: add.id, attrs: add.attrs, addRowCallback: add.callBack, insAct: ins});
 
 		// Transformar celdas existentes en campos editables, basado en las definiciones.
 		this.transformExistingCells({tableId: tableId, columnsDefinition: columns.tableFields, pkDefinitions: columns.pkFields, cellsDefinition: cellsDef});
@@ -95,8 +98,6 @@ class Detalle {
 
 		// Poner boton de eliminar
 		this.putDeleteButton({tableId: tableId, deleteAction: del, dbTable: dbTable, columnsDef: columns, cellsDef: cellsDef});
-
-		// Asignar accion a AddButton
 	}
 
 	static dbDelete({dbTable="", dbArrWhere=[], confirmBefore=false, onDeleteCallback=undefined} = {}) {
@@ -115,13 +116,13 @@ class Detalle {
 			.then( response => {
 				if (response.ok) {
 					response.text()
-					.then(response => {
-						if (response.length > 2) {
+					.then(resp => {
+						if (resp.length > 2) {
 							alert("Ocurrio un error al eliminar!");
-							console.error("Ocurrio un error al eliminar detalle. Info: " + response);
+							console.error("Ocurrio un error al eliminar detalle. Info: " + resp);
 						} else {
 							if (onDeleteCallback)
-								onSaveCallback();
+								onDeleteCallback();
 							if (document.querySelector("a[title*='Refrescar']"))
 								document.querySelector("a[title*='Refrescar']").click();
 							else
@@ -340,10 +341,10 @@ class Detalle {
 			.then(response => {
 				if (response.ok) {
 					response.text()
-					.then(response => {
-						if (response.length > 2) {
+					.then(resp => {
+						if (resp.length > 2) {
 							alert("Ocurrio un error al actualizar linea " + linea);
-							console.error("Ocurrio un error al actualizar linea " + linea + ". Info: " + response);
+							console.error("Ocurrio un error al actualizar linea " + linea + ". Info: " + resp);
 						} else {
 							if (onUpdateCallback)
 								onUpdateCallback();
@@ -678,52 +679,40 @@ class Detalle {
 		return element;
 	}
 
-	static addNewInsertRow() {
-		let items = document.getElementById(id),
-		linea = items.querySelectorAll("tr").length - 1,
-		newRow = undefined,
-		newCell = undefined,
-		element = undefined;
-
-		const CELLS_QUANT = configuration.newItemCells.length;
-
-		  newRow = document.createElement("tr");
-		  newRow.classList.add("clTableOn");
-
-		  for (let j = 0; j < CELLS_QUANT; ++j) {
-		    newCell = document.createElement("td");
-		    newCell.classList.add("clTableOn");
-
-		    if (configuration.newItemCells[j])
-			element = configuration.newItemCells[j]();
-
-		    if (element.dataset.indicator) element.value = linea;
-
-		    if (element) {
-			newCell.appendChild(element);
-			newRow.appendChild(newCell);
-		    }
-		  }
-
-		  newCell = document.createElement("td");
-		  newCell.classList.add("clTableOn");
-	}
-
-	static putAddButton({tableId, locationElement="default", buttonLabel="Agregar Item", buttonId="pbDetManagerAddItem", cssClases=['detmanager-boton'], attrs=[{att: 'title', val: 'Agregar nuevo Item'}]} = {}) {
+	static putAddButton({
+			cellsDef={defins:{}},
+			columns={
+				pkFields:[],
+				tableFields:[]
+			},
+			tableId="",
+			dbTable="",
+			locationElement="default",
+			buttonLabel="Agregar Item",
+			buttonId="pbDetManagerAddItem",
+			cssClases=['detmanager-boton'],
+			attrs=[
+				{att: 'title', val: 'Agregar nuevo Item'}
+			],
+			addRowCallback=undefined,
+			insAct={}
+		} = {}) {
 		if(locationElement == "default") locationElement = document.getElementById(`DetManager_${tableId}_Detail_Actions`);
 
 		buttonId = `${tableId}_${buttonId}`;
 
-		let buttonComponent = `<input type="button" value="${buttonLabel}" id="${buttonId}" class="${cssClases.join(' ')}">`;
+		let buttonComponent = `<input type="button" value="${buttonLabel}" id="${buttonId}" class="${cssClases ?? ['detmanager-boton'].join(' ')}">`;
 
 		locationElement.innerHTML = buttonComponent + locationElement.innerHTML;
 
-		attrs.forEach(attr => {
-			document.getElementById(buttonId).setAttribute(attr.att, attr.val);
-		});
+		if(attrs)
+			attrs.forEach(attr => {
+				document.getElementById(buttonId).setAttribute(attr.att, attr.val);
+			});
 
 		document.getElementById(buttonId).addEventListener("click", function() {
-			alert("Add");
+			Detalle.addInsertRow({tableId: tableId, dbTable: dbTable, columns: columns, cellsDefinition: cellsDef, onInsertRowCallback: addRowCallback, insertAction: insAct});
+			this.style.display = "none";
 		});
 	}
 
@@ -745,44 +734,201 @@ class Detalle {
 		locationElement.innerHTML = titleComponent + locationElement.innerHTML;
 	}
 
-	static addInsertRow(tableId, cellsDefinition) {
+	static addInsertRow({
+				tableId="",
+				dbTable="",
+				columns={
+					pkFields:[],
+					tableFields:[]
+				},
+				cellsDefinition={
+					defins: {}
+				},
+				onInsertRowCallback=undefined,
+				insertAction={
+					label:"",
+					clases:[],
+					attrs: []
+				}
+			} = {}) {
 		let
 		table = document.getElementById(tableId),
-		rows = table.rows,
-		rowLength = rows.length,
-		newRow,
-		newCell,
-		newElement;
+		rows = table.querySelectorAll("tbody")[0].rows,
+		columnsDefinition = columns.tableFields,
+		newRow = table.querySelectorAll('tbody')[0].insertRow(),
+		newCell;
 
-		console.table(cellsDefinition);
-		console.log(`
-			[addInsertRow]: Parameters={tableElement: ${table.innerHTML}, cellsDefinition: ${JSON.stringify(cellsDefinition)}}
-		`);
 
-		newRow = table.querySelectorAll('tbody')[0].insertRow();
+		rows = this.getCuratedRows({rowsArr: rows, hasTHead: cellsDefinition.hasTHead, totalized: cellsDefinition.totalized});
 
-		for(let spec of cellsDefinition) {
+		let cellsQuant = rows[0].cells.length;
+
+		// El valor del indicator debe ser rowLength
+		console.table({tableId, columns, cellsDefinition, rowsLength: rows.length});
+
+		columnsDefinition.forEach(specString => {
 			newCell = newRow.insertCell();
 
-			newElement = this.createDataField(spec);
-
-			if(newElement.dataset.indicator == "true")
-				newElement.value = rowLength - 1;
-
-			newCell.innerHTML = newElement.outerHTML;
-
-			if(spec.siblingsDefinition) {
-				for(let sibSpec of spec.siblingsDefinition) {
-					newElement = this.createDataField(sibSpec);
-
-					if(newElement.dataset.indicator == "true")
-						newElement.value = rowLength - 1;
-
-					newCell.innerHTML += newElement.outerHTML;
-				}
+			let colsInfoArray = specString.split(":");
+			let colname = colsInfoArray[0];
+			let specificFieldClasses = this.getSpecificProp({specificColnameDefs: cellsDefinition.defins, colname: colname, propName: 'clases'});
+			let specificFieldAttribs = this.getSpecificProp({specificColnameDefs: cellsDefinition.defins, colname: colname, propName: 'attrs'});
+			let fieldDef = this.getFieldDefinition(specString);
+			let fieldElem = "";
+			if( fieldDef !== 'combo' ) {
+				fieldDef.cssClasses = [ ...cellsDefinition.globalClases ?? [], ...specificFieldClasses ?? [] ];
+				fieldDef.elementAttributes = specificFieldAttribs;
+				fieldElem = this.getDataFieldByDefinition(fieldDef);
+			} else {
+				let comboClases = [ ...cellsDefinition.globalClases ?? [], ...specificFieldClasses ?? [] ];
+				let comboAttribs = specificFieldAttribs;
+				fieldElem = this.getComboElement({definitionStr: specString, classes: comboClases, attrs: comboAttribs});
 			}
-		}
 
-		console.log(newRow.outerHTML);
+			if(fieldElem.dataset.indicator == "true")
+				fieldElem.value = rows.length;
+
+			newCell.append(fieldElem);
+		});
+
+		do {
+			newRow.insertCell();
+		} while(newRow.cells.length < cellsQuant - 1);
+
+		let insertButton = this.getInsertElement(insertAction);
+
+		let colsInsert = [];
+		columns.pkFields.forEach(strColumn => colsInsert.push(strColumn.split(":")[0]));
+		columns.tableFields.forEach(strColumn => colsInsert.push(strColumn.split(":")[0]));
+
+		insertButton.addEventListener('click', function(){
+			Detalle.dbInsertByColumns({eventTarget: this, dbTable: dbTable, dbArrColumns: colsInsert, confirmBefore: insertAction.confirmBefore, onSaveCallback: insertAction.callBack});
+		});
+
+		newCell = newRow.insertCell();
+		newCell.append(insertButton);
+
+		if(onInsertRowCallback)
+			onInsertRowCallback();
+
+	}
+
+	static getInsertElement(insertActionDefinition={label: "Grabar", clases: [], attrs: []}) {
+		let insertButton = document.createElement("input");
+
+		insertButton.value = insertActionDefinition.label;
+		insertButton.dataset.action = "insert";
+		insertButton.type = "button";
+
+		if(insertActionDefinition.clases)
+			insertActionDefinition.clases.forEach(clase => insertButton.classList.add(clase));
+
+		if(insertActionDefinition.attrs)
+			insertActionDefinition.attrs.forEach(attr => insertButton.setAttribute(attr.att, attr.val));
+
+		return insertButton;
+	}
+
+	static dbInsertByColumns({eventTarget=undefined, dbTable="", dbArrColumns=[], confirmBefore=false, onSaveCallback=undefined} = {}){
+		let columnas = [],
+		valores = [],
+		parentRow = eventTarget.parentElement.parentElement,
+		confirmado = confirmBefore ? confirm("Desea guardar el registro?") : true,
+		params = [];
+
+		dbArrColumns.forEach(column => {
+			let evalElem = parentRow.querySelector(`[data-dbcolumn="${column}"]`);
+			if(evalElem) {
+				columnas.push(column);
+				valores.push(this.sintaxisPorTipo[evalElem.dataset.type.toUpperCase()].replace(/:VALUE/g, evalElem.value));
+			} else{
+				evalElem = document.querySelector(`[data-dbcolumn="${column}"]`);
+				columnas.push(evalElem.dataset.dbcolumn);
+				valores.push(this.sintaxisPorTipo[evalElem.dataset.type.toUpperCase()].replace(/:VALUE/g, evalElem.value));
+			}
+		});
+
+		console.table({parentRow, columnas, valores, dbTable, dbArrColumns, confirmBefore, onSaveCallback});
+
+		params = [
+			"tp=P",
+			"m=I",
+			"l=" + valores.join("|"),
+			"c=" + columnas.join("|"),
+			"t=" + dbTable,
+		];
+		params = params.join("&");
+
+		let url = document.location.href;
+		url = url.substring(0, url.lastIndexOf("/Sistema") + 8);
+		url += "/getdata?" + params;
+
+		if (confirmado) {
+			fetch(encodeURI(url)).then((response) => {
+				if (response.ok) {
+					response.text()
+					.then((resp) => {
+						if (resp != 1) {
+							alert("Algo salio mal al grabar el detalle!");
+							console.error(
+								"Ocurrio un error al guardar detalle. Info: " + resp
+							);
+						} else {
+							if (onSaveCallback)
+								onSaveCallback();
+							if (document.querySelector("a[title*='Refrescar']"))
+								document.querySelector("a[title*='Refrescar']").click();
+							else
+								document.location.reload();
+						}
+					});
+				}
+			});
+		}
+	}
+
+	static dbInsert({dbTable="", dbArrColumns=[], dbArrValores=[], confirmBefore=false, onSaveCallback=undefined} = {}){
+		let columnas = dbArrColumns,
+		valores = dbArrValores,
+		confirmado = confirmBefore ? confirm("Desea guardar el registro?") : true,
+		params = [];
+
+		params = [
+			"tp=P",
+			"m=I",
+			"l=" + valores.join("|"),
+			"c=" + columnas.join("|"),
+			"t=" + dbTable,
+		];
+		params = params.join("&");
+
+		let url = document.location.href;
+		url = url.substring(0, url.lastIndexOf("/Sistema") + 8);
+		url += "/getdata?" + params;
+
+		console.log(`[onSaveReg]: callback=${onSaveCallback}`);
+
+		if (confirmado) {
+			fetch(encodeURI(url)).then((response) => {
+				if (response.ok) {
+					response.text()
+					.then((resp) => {
+						if (resp != 1) {
+							alert("Algo salio mal al grabar el detalle!");
+							console.error(
+								"Ocurrio un error al guardar detalle. Info: " + resp
+							);
+						} else {
+							if (onSaveCallback)
+								onSaveCallback();
+							if (document.querySelector("a[title*='Refrescar']"))
+								document.querySelector("a[title*='Refrescar']").click();
+							else
+								document.location.reload();
+						}
+					});
+				}
+			});
+		}
 	}
 }
