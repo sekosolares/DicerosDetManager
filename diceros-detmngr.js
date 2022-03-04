@@ -70,6 +70,7 @@ class Detalle {
 		title = config.title,
 		add = config.addAct,
 		upd = config.updAct,
+		del = config.delAct,
 		columns = config.dbcolumns,
 		dbTable = config.dbtable,
 		cellsDef = config.cells;
@@ -93,7 +94,7 @@ class Detalle {
 		this.putUpdateButton({tableId: tableId, updateAction: upd, dbTable: dbTable, columnsDef: columns, cellsDef: cellsDef});
 
 		// Poner boton de eliminar
-
+		this.putDeleteButton({tableId: tableId, deleteAction: del, dbTable: dbTable, columnsDef: columns, cellsDef: cellsDef});
 
 		// Asignar accion a AddButton
 	}
@@ -135,6 +136,61 @@ class Detalle {
 		}
 	}
 
+	static dbDeleteByColumns({eventTarget=undefined, dbTable="", dbArrWhere=[], dbWhereSpecific=[], confirmBefore=false, onDeleteCallback=undefined} = {}) {
+		let
+		params = [],
+		confirmado = confirmBefore ? confirm("Desea eliminar el registro?") : true,
+		dbPkFields = document.querySelectorAll("[data-dbcolumn]"),
+		where = [],
+		url = document.location.href;
+
+		dbArrWhere = dbArrWhere.map(elem => elem.toUpperCase());
+
+		dbPkFields.forEach(field => {
+			if( dbArrWhere.includes( field.dataset.dbcolumn.toUpperCase() ) )
+			    where.push(`${field.dataset.dbcolumn}|${
+				    this.sintaxisPorTipo[field.dataset.type.toUpperCase()].replace(/:VALUE/g, field.value)
+			    }`);
+		});
+
+		where = [...where, ...dbWhereSpecific];
+
+		params = [
+			'tp=P', 'm=D', `t=${dbTable}`, `l=${where.join(' and ')}`
+		];
+
+		url = url.substring(0, url.lastIndexOf("Sistema/") + 7);
+		url += "/getdata?" + params;
+		url += params.join('&');
+
+		console.table({params, url, where, dbArrWhere});
+
+		if(confirmado) {
+			fetch(encodeURI(url))
+			.then( response => {
+				if (response.ok) {
+					response.text()
+					.then(resp => {
+						if (resp.indexOf("ORA-") > -1) {
+							alert("Ocurrio un error al eliminar!");
+							console.error("Ocurrio un error al eliminar detalle. Info: " + resp);
+						} else {
+							if (onDeleteCallback)
+								onDeleteCallback();
+							if (document.querySelector("a[title*='Refrescar']"))
+								document.querySelector("a[title*='Refrescar']").click();
+							else
+								document.location.reload();
+						}
+					});
+				}
+			})
+			.catch(error => {
+				alert(`Algo salio mal ${error}`);
+			});
+		}
+	}
+
 	static putDeleteButton({
 		tableId="",
 		deleteAction={
@@ -143,10 +199,10 @@ class Detalle {
 			confirmBefore: false,
 			attrs: []
 		},
-		dbTable="esquema.tabla",
+		dbTable="",
 		columnsDef={
-			pkFields: ["pkcolumn:number:input#PKID"],
-			tableFields: ["column:number:input"]
+			pkFields: [],
+			tableFields: []
 		},
 		cellsDef={
 			totalized: true,
@@ -159,44 +215,43 @@ class Detalle {
 		let tabla = document.getElementById(tableId),
 		tBody = tabla.querySelectorAll("tbody")[0],
 		rows = tBody.rows,
-		pbId = "DetMngr_PbUpd_",
+		pbId = "DetMngr_PbDel_",
 		suffix = "";
 
 		suffix = this.getSuffixByColumns(columnsDef.pkFields);
 		rows = this.getCuratedRows({rowsArr: rows, hasTHead: cellsDef.hasTHead, totalized: cellsDef.totalized});
 
 		for(let row of rows) {
-			let updElem = document.createElement('input');
+			let delElem = document.createElement('input');
 			let indicatorElement = row.querySelector("[data-indicator='true']");
 			let cells = row.cells;
 
-			updElem.type = 'button';
+			delElem.type = 'button';
 
 			if(deleteAction.clases)
-				deleteAction.clases.forEach(cssClass => updElem.classList.add(cssClass));
+				deleteAction.clases.forEach(cssClass => delElem.classList.add(cssClass));
 
-			updElem.value = deleteAction.label;
-			updElem.dataset.action = "update";
+			delElem.value = deleteAction.label;
+			delElem.dataset.action = "delete";
 
 			if(deleteAction.attrs)
-				deleteAction.attrs.forEach( elem => updElem.setAttribute(elem.att, elem.val));
+				deleteAction.attrs.forEach( elem => delElem.setAttribute(elem.att, elem.val));
 
-			let colsUpdNames = this.getColumnNamesByDefinition(columnsDef.tableFields);
-			let colsUpdPks = this.getColumnNamesByDefinition(columnsDef.pkFields);
+			let colsDelPks = this.getColumnNamesByDefinition(columnsDef.pkFields);
 			let specificWhere = [];
 			specificWhere.push(`${indicatorElement.dataset.dbcolumn}|${
 				this.sintaxisPorTipo[indicatorElement.dataset.type.toUpperCase()].replace(/:VALUE/g, indicatorElement.value)
 			}`);
 
-			updElem.addEventListener("click", function(){
-				Detalle.dbUpdateByColumns({eventTarget: this, dbTable: dbTable, dbArrColumns: colsUpdNames, dbArrWhere: colsUpdPks, dbWhereSpecific: specificWhere, confirmBefore: deleteAction.confirmBefore, onUpdateCallback: deleteAction.callBack});
+			delElem.addEventListener("click", function(){
+				Detalle.dbDeleteByColumns({eventTarget: this, dbTable: dbTable, dbArrWhere: colsDelPks, dbWhereSpecific: specificWhere, confirmBefore: deleteAction.confirmBefore, onDeleteCallback: deleteAction.callBack});
 			});
 
 			suffix += indicatorElement.value;
 			pbId += suffix;
-			updElem.id = pbId;
+			delElem.id = pbId;
 
-			cells[cells.length - 1].append(updElem);
+			cells[cells.length - 1].append(delElem);
 		}
 	}
 
@@ -247,7 +302,7 @@ class Detalle {
 				if (response.ok) {
 					response.text()
 					.then(resp => {
-						if (resp.length > 2) {
+						if (resp.indexOf('ORA-') > -1) {
 							alert("Ocurrio un error al actualizar.");
 							console.error("Ocurrio un error al actualizar. Info: " + resp);
 						} else {
@@ -456,10 +511,12 @@ class Detalle {
 					fieldElem = this.getComboElement({definitionStr: columnsDefinition[cell.cellIndex], classes: comboClases, attrs: comboAttribs});
 				}
 
-				cell.innerHTML = '';
-				cell.append(fieldElem);
+				if(colname.length > 0) {
+					cell.innerHTML = '';
+					cell.append(fieldElem);
 
-				fieldElem.value = value;
+					fieldElem.value = value;
+				}
 			}
 		}
 
@@ -548,6 +605,10 @@ class Detalle {
 		selectElement.classList.forEach(clase => selectElement.classList.remove(clase));
 		selectElement.removeAttribute('id');
 		selectElement.removeAttribute('name');
+		selectElement.removeAttribute('class');
+		selectElement.removeAttribute('disabled');
+		selectElement.removeAttribute('tabindex');
+		selectElement.removeAttribute('style');
 		selectElement.dataset.type = arrSpecs[1];
 		selectElement.dataset.dbcolumn = arrSpecs[0];
 		classes.forEach( cssClass => selectElement.classList.add(cssClass) );
@@ -588,7 +649,7 @@ class Detalle {
 
 		element = document.createElement(fieldDefinition.elementTag);
 
-		if(fieldDefinition.type)
+		if(fieldDefinition.fieldType)
 			element.type = fieldDefinition.fieldType;
 
 		if(fieldDefinition.isIndicator)
@@ -617,9 +678,41 @@ class Detalle {
 		return element;
 	}
 
+	static addNewInsertRow() {
+		let items = document.getElementById(id),
+		linea = items.querySelectorAll("tr").length - 1,
+		newRow = undefined,
+		newCell = undefined,
+		element = undefined;
+
+		const CELLS_QUANT = configuration.newItemCells.length;
+
+		  newRow = document.createElement("tr");
+		  newRow.classList.add("clTableOn");
+
+		  for (let j = 0; j < CELLS_QUANT; ++j) {
+		    newCell = document.createElement("td");
+		    newCell.classList.add("clTableOn");
+
+		    if (configuration.newItemCells[j])
+			element = configuration.newItemCells[j]();
+
+		    if (element.dataset.indicator) element.value = linea;
+
+		    if (element) {
+			newCell.appendChild(element);
+			newRow.appendChild(newCell);
+		    }
+		  }
+
+		  newCell = document.createElement("td");
+		  newCell.classList.add("clTableOn");
+	}
+
 	static putAddButton({tableId, locationElement="default", buttonLabel="Agregar Item", buttonId="pbDetManagerAddItem", cssClases=['detmanager-boton'], attrs=[{att: 'title', val: 'Agregar nuevo Item'}]} = {}) {
 		if(locationElement == "default") locationElement = document.getElementById(`DetManager_${tableId}_Detail_Actions`);
 
+		buttonId = `${tableId}_${buttonId}`;
 
 		let buttonComponent = `<input type="button" value="${buttonLabel}" id="${buttonId}" class="${cssClases.join(' ')}">`;
 
@@ -627,6 +720,10 @@ class Detalle {
 
 		attrs.forEach(attr => {
 			document.getElementById(buttonId).setAttribute(attr.att, attr.val);
+		});
+
+		document.getElementById(buttonId).addEventListener("click", function() {
+			alert("Add");
 		});
 	}
 
